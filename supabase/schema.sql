@@ -17,6 +17,11 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+-- New tables are not exposed to the Data API automatically in this project:
+-- signed-in people may use this table, within the rules below; visitors may not.
+revoke all on public.profiles from anon;
+grant select, insert, update on public.profiles to authenticated;
+
 drop policy if exists "profiles: read own" on public.profiles;
 create policy "profiles: read own" on public.profiles
   for select using (id = auth.uid());
