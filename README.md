@@ -2,7 +2,7 @@
 
 Digestlit reads the new papers in your field for you. You give it research questions and keywords; every week or two it finds what was just published, reads each paper, and writes a Word report on what is new, how it bears on your question, and where it agrees or disagrees with earlier work. At the end of the month it can build a bigger report, from all the papers or only the ones you pick.
 
-Live at <https://digestlit.vercel.app>.
+Live at <https://digestlit.vercel.app>. Code: <https://github.com/debanjanofficial2022/DigestLit>.
 
 ## Status
 
