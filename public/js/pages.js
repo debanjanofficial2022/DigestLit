@@ -1,15 +1,9 @@
-// The pages of Digestlit. Phase 1: sign-in and the empty sections.
+// The pages of Digestlit: sign-in, dashboard and the simpler sections. Trackers live in trackers.js.
 import { sendMagicLink, getProfile, signOut, configured } from './auth.js';
 import { LOGOS, CURRENT_LOGO, logoSVG } from './logo.js';
 
-const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-
-function el(html) {
-  const div = document.createElement('div');
-  div.innerHTML = html.trim();
-  return div.firstElementChild;
-}
+import { esc, el, go } from './util.js';
+import { listTrackers } from './trackers.js';
 
 // ---------- Signed out ----------
 
@@ -93,6 +87,8 @@ export function signin() {
 
 export async function dashboard(user) {
   const profile = await getProfile().catch(() => null);
+  const trackers = await listTrackers().catch(() => []);
+  const active = trackers.filter((t) => t.status === 'active').length;
   const name = (user.email || '').split('@')[0];
   return el(`
     <div class="wrap">
@@ -104,36 +100,28 @@ export async function dashboard(user) {
         </div>
       </div>
       <div class="grid">
-        <div class="card"><p class="eyebrow">Trackers</p><p class="stat">0</p><p class="muted small">research topics followed</p></div>
+        <div class="card"><p class="eyebrow">Trackers</p><p class="stat">${trackers.length}</p><p class="muted small">${trackers.length ? `${active} active` : 'research topics followed'}</p></div>
         <div class="card"><p class="eyebrow">Reports</p><p class="stat">0</p><p class="muted small">weekly and biweekly reports</p></div>
         <div class="card"><p class="eyebrow">AI</p><p class="stat" style="font-size:1.3rem;margin-top:10px">Not set</p><p class="muted small">add a key or choose the free AI</p></div>
       </div>
       <hr class="rule" />
-      <div class="empty">
+      ${
+        trackers.length
+          ? `<div class="page-head"><h2 style="margin:0">Your trackers</h2><a class="btn btn-quiet" href="/trackers/new" data-link>New tracker</a></div>
+             <div class="grid">${trackers
+               .map((t) => `<a class="card section-link" href="/trackers/${t.id}" data-link><h3>${esc(t.name)}</h3><p>${esc(t.question)}</p></a>`)
+               .join('')}</div>`
+          : `<div class="empty">
         <h2>No trackers yet</h2>
-        <p>A tracker is one research question with its own keywords, schedule and reports. Creating trackers arrives in the next update.</p>
-        <button class="btn" disabled>New tracker</button>
-      </div>
+        <p>A tracker is one research question with its own keywords, schedule and reports.</p>
+        <a class="btn" href="/trackers/new" data-link>New tracker</a>
+      </div>`
+      }
       <hr class="rule" />
       <div class="grid">
         <a class="card section-link" href="/reports" data-link><h3>Reports</h3><p>Every weekly and biweekly report, newest first.</p></a>
         <a class="card section-link" href="/monthly" data-link><h3>Monthly</h3><p>Turn a month of reports into one bigger one.</p></a>
         <a class="card section-link" href="/get-a-key" data-link><h3>Get a key</h3><p>Step-by-step guides for each AI provider.</p></a>
-      </div>
-    </div>`);
-}
-
-export function trackers() {
-  return el(`
-    <div class="wrap">
-      <div class="page-head">
-        <div><p class="eyebrow">Trackers</p><h1>Your trackers</h1>
-        <p class="muted">Each tracker follows one research question and is reported separately.</p></div>
-        <button class="btn" disabled>New tracker</button>
-      </div>
-      <div class="empty">
-        <h2>No trackers yet</h2>
-        <p>Soon you'll set a research question, keywords, optional baseline papers and a weekly or biweekly run day here, and preview the papers it would have found in the last two weeks.</p>
       </div>
     </div>`);
 }
@@ -258,8 +246,7 @@ export async function settings(user) {
     </div>`);
   page.querySelector('[data-signout]').addEventListener('click', async () => {
     await signOut();
-    history.pushState(null, '', '/');
-    dispatchEvent(new PopStateEvent('popstate'));
+    go('/');
   });
   return page;
 }

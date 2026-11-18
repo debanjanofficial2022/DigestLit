@@ -2,6 +2,7 @@
 import { getUser, onAuthChange, configured } from './auth.js';
 import { logoSVG } from './logo.js';
 import * as pages from './pages.js';
+import { trackersPage, newTrackerPage, trackerPage, editTrackerPage } from './trackers.js';
 
 // Pages anyone can open, and pages that need a signed-in account
 const open = {
@@ -11,11 +12,27 @@ const open = {
 };
 const gated = {
   '/': { view: pages.dashboard, title: null, nav: null },
-  '/trackers': { view: pages.trackers, title: 'Trackers', nav: 'trackers' },
+  '/trackers': { view: trackersPage, title: 'Trackers', nav: 'trackers' },
+  '/trackers/new': { view: newTrackerPage, title: 'New tracker', nav: 'trackers' },
   '/reports': { view: pages.reports, title: 'Reports', nav: 'reports' },
   '/monthly': { view: pages.monthly, title: 'Monthly', nav: 'monthly' },
   '/settings': { view: pages.settings, title: 'Settings', nav: 'settings' },
 };
+
+// Addresses with an id in them: /trackers/<id>, /trackers/<id>/edit
+const gatedPatterns = [
+  { re: /^\/trackers\/([0-9a-f-]{36})$/i, view: trackerPage, title: 'Tracker', nav: 'trackers' },
+  { re: /^\/trackers\/([0-9a-f-]{36})\/edit$/i, view: editTrackerPage, title: 'Edit tracker', nav: 'trackers' },
+];
+
+function matchGated(path) {
+  if (gated[path]) return { ...gated[path], args: [] };
+  for (const p of gatedPatterns) {
+    const m = path.match(p.re);
+    if (m) return { ...p, args: m.slice(1) };
+  }
+  return null;
+}
 
 const main = document.getElementById('main');
 let user = null;
@@ -36,10 +53,11 @@ async function render() {
     path = '/';
   }
 
-  let route = open[path] || gated[path];
+  const g = matchGated(path);
+  let route = open[path] || g;
   let view;
   if (!route) view = pages.notFound;
-  else if (gated[path] && !user) {
+  else if (g && !user) {
     // Signed out: the start page explains Digestlit; other private pages ask for sign-in
     route = path === '/' ? { view: pages.home, title: null } : { view: pages.signin, title: 'Sign in' };
     view = route.view;
@@ -55,7 +73,7 @@ async function render() {
 
   main.innerHTML = '<p class="loading">Loading…</p>';
   try {
-    const node = await view(user);
+    const node = await view(user, ...((route && route.args) || []));
     if (id !== renderId) return;
     main.replaceChildren(node);
   } catch (err) {
